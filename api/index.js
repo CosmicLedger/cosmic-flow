@@ -105,6 +105,9 @@ const wabtToolRoute = (subpath, toolPath) =>
 
 const app = express()
 
+// Import contract routes
+const contractsRouter = require('./routes/contracts')
+
 const corsOptions = {
   origin: function (origin, callback) {
     if (
@@ -150,6 +153,9 @@ app.use(morgan((tokens, req, res) => {
     `"${tokens.referrer(req, res) || '-'}"`,
   ].join(' ')
 }, { skip: (req) => req.path === '/health' }))
+
+// Smart contracts API routes
+app.use('/api/contracts', contractsRouter)
 
 /**
  * Decompile a wasm file using the wabt wasm-decompile tool

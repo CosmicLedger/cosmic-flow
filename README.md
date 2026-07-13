@@ -314,6 +314,16 @@ We welcome contributions! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for deta
 - **Async Runtime:** [Tokio](https://tokio.rs/) - Asynchronous runtime
 - **Caching:** [Redis](https://redis.io/) - In-memory data store
 
+**Smart Contracts (Soroban):**
+- **Platform:** [Soroban](https://soroban.stellar.org/) - Stellar smart contract platform
+- **Language:** [Rust](https://www.rust-lang.org/) - Safe and performant
+- **SDK:** [Soroban SDK](https://docs.rs/soroban-sdk/) - Smart contract development
+- **Contracts:**
+  - **Token Contract**: Fungible tokens (ERC-20 style)
+  - **NFT Contract**: Non-fungible tokens
+  - **DeFi Pool Contract**: Liquidity pools and AMM
+  - **Governance Contract**: DAO voting and proposals
+
 ### Project Structure
 
 ```
@@ -327,10 +337,20 @@ stellar-chain-explorer/
 │   ├── migrations/       # Database migrations
 │   ├── Cargo.toml        # Rust dependencies
 │   └── Dockerfile        # Rust service container
+├── smart-contracts/      # Soroban smart contracts
+│   ├── contracts/        # Individual contracts
+│   │   ├── token/        # Fungible token contract
+│   │   ├── nft/          # Non-fungible token contract
+│   │   ├── defi-pool/    # Liquidity pool contract
+│   │   └── governance/   # DAO governance contract
+│   └── Cargo.toml        # Workspace configuration
 ├── app/                  # Frontend application
 │   ├── components/       # Reusable React components
+│   │   ├── contracts/    # Contract interaction components
+│   │   └── wallet/       # Wallet connection components
 │   ├── routes/           # Remix route modules
 │   ├── lib/              # Utility functions and helpers
+│   │   └── contracts/    # Contract client libraries
 │   ├── languages/        # Internationalization files
 │   └── styles/           # CSS and styling
 ├── e2e/                  # End-to-end tests
@@ -446,6 +466,7 @@ This project is licensed under the Apache-2.0 License - see the [LICENSE](LICENS
 
 - Original [StellarExplorer](https://github.com/chatch/stellarexplorer) by Chris Hatch
 - [Stellar Development Foundation](https://stellar.org/)
+- [Soroban Smart Contract Platform](https://soroban.stellar.org/)
 - All [contributors](https://github.com/CosmicLedger/stellar-chain-explorer/graphs/contributors)
 
 ## Support
