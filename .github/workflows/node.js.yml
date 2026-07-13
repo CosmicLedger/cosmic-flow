@@ -54,7 +54,7 @@ jobs:
         run: pnpm test -- --coverage --watchAll=false
 
       - name: Upload coverage to Codecov
-        uses: codecov/codecov-action@v5
+        uses: codecov/codecov-action@v7
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           files: ./coverage/coverage-final.json
@@ -64,7 +64,7 @@ jobs:
 
       - name: Archive test results
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: test-results
           path: |
@@ -108,7 +108,7 @@ jobs:
 
       - name: Upload E2E test results
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: e2e-results-${{ matrix.shardIndex }}
           path: |
@@ -145,7 +145,7 @@ jobs:
         working-directory: api
 
       - name: Upload API coverage to Codecov
-        uses: codecov/codecov-action@v5
+        uses: codecov/codecov-action@v7
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           files: ./api/coverage/coverage-final.json
@@ -170,6 +170,6 @@ jobs:
           output: 'trivy-results.sarif'
 
       - name: Upload Trivy results to GitHub Security tab
-        uses: github/codeql-action/upload-sarif@v3
+        uses: github/codeql-action/upload-sarif@v4
         with:
           sarif_file: 'trivy-results.sarif'
