@@ -1,0 +1,69 @@
+/**
+ * By default, Remix will handle hydrating your app on the client for you.
+ * You are free to delete this file if you'd like to, but if you ever want it revealed again, you can run `npx remix reveal` ✨
+ * For more information, see https://remix.run/file-conventions/entry.client
+ */
+
+import { RemixBrowser, useLocation, useMatches } from '@remix-run/react'
+import { startTransition, StrictMode, useEffect } from 'react'
+import { hydrateRoot } from 'react-dom/client'
+import * as Sentry from '@sentry/remix'
+
+if (process.env.NODE_ENV !== 'development') {
+  Sentry.init({
+    dsn: 'https://76beb9ebb67baaf3347f17f7c2190d1c@o4505837033095168.ingest.us.sentry.io/4505837045153792',
+    integrations: [
+      Sentry.browserTracingIntegration({
+        useEffect,
+        useLocation,
+        useMatches,
+      }),
+    ],
+
+    beforeSend(event) {
+      if (isRemixRouteMissErrorBoundaryEvent(event)) {
+        return null
+      }
+
+      return event
+    },
+
+    // Set tracesSampleRate to 1.0 to capture 100%
+    // of transactions for performance monitoring.
+    // We recommend adjusting this value in production
+    tracesSampleRate: 1.0,
+
+    // Set `tracePropagationTargets` to control for which URLs distributed tracing should be enabled
+    tracePropagationTargets: [
+      'http://testnet.local:3000',
+      /^https:\/\/([a-z0-9-]+\.)*steexp\.com/,
+    ],
+
+    // Capture Replay for 10% of all sessions,
+    // plus for 100% of sessions with an error
+    replaysSessionSampleRate: 0.1,
+    replaysOnErrorSampleRate: 1.0,
+  })
+}
+
+function isRemixRouteMissErrorBoundaryEvent(event: Sentry.Event) {
+  const exception = event.exception?.values?.[0]
+  const mechanism = exception?.mechanism
+  const value = exception?.value
+
+  return (
+    mechanism?.type === 'instrument' &&
+    mechanism.data?.function === 'ReactError' &&
+    typeof value === 'string' &&
+    /^(No route matches URL|Method .+ not allowed for route)/i.test(value)
+  )
+}
+
+startTransition(() => {
+  hydrateRoot(
+    document,
+    <StrictMode>
+      <RemixBrowser />
+    </StrictMode>,
+  )
+})

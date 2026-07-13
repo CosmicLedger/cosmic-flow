@@ -1,0 +1,178 @@
+name: Deploy
+
+on:
+  push:
+    tags:
+      - 'v*-app'
+      - 'v*-api'
+
+permissions:
+  contents: read
+
+jobs:
+  deploy-web:
+    name: Deploy web app
+    if: endsWith(github.ref_name, '-app')
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    concurrency:
+      group: deploy-web-production
+      cancel-in-progress: false
+    environment:
+      name: production-web
+      url: https://explorer.cosmicledger.io
+    steps:
+      - name: Log trigger context
+        env:
+          TAG: ${{ github.ref_name }}
+          SHA: ${{ github.sha }}
+          ACTOR: ${{ github.actor }}
+        run: |
+          echo "Tag:   $TAG"
+          echo "SHA:   $SHA"
+          echo "Actor: $ACTOR"
+
+      - name: Checkout
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          persist-credentials: false
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@0ebf47130e4866e96fce0953f49152a61190b271 # v6.0.9
+        with:
+          version: 11.8.0
+
+      - name: Setup Node
+        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
+        with:
+          node-version: 24
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Lint
+        run: pnpm run lint
+
+      - name: Typecheck
+        run: pnpm run typecheck
+
+      - name: Test
+        run: pnpm test -- --coverage --watchAll=false
+
+      - name: Build
+        run: pnpm run build
+
+      - name: Deploy to Cloudflare Pages
+        uses: cloudflare/wrangler-action@ebbaa1584979971c8614a24965b4405ff95890e0 # v4.0.0
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          packageManager: pnpm
+          command: >-
+            pages deploy ./build/client
+            --project-name=stellar-chain-explorer
+            --branch=main
+
+      - name: Smoke test web
+        run: |
+          for i in 1 2 3 4 5 6; do
+            code="$(curl -sS -o /dev/null -w '%{http_code}' https://explorer.cosmicledger.io || true)"
+            if [ "$code" = "200" ]; then
+              exit 0
+            fi
+            sleep 10
+          done
+          echo "explorer.cosmicledger.io returned HTTP $code"
+          exit 1
+
+      - name: Notify deployment success
+        if: success()
+        run: |
+          echo "✅ Web deployment successful!"
+          echo "URL: https://explorer.cosmicledger.io"
+
+  deploy-api:
+    name: Deploy API
+    if: endsWith(github.ref_name, '-api')
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    concurrency:
+      group: deploy-api-production
+      cancel-in-progress: false
+    environment:
+      name: production-api
+      url: https://api.cosmicledger.io
+    steps:
+      - name: Log trigger context
+        env:
+          TAG: ${{ github.ref_name }}
+          SHA: ${{ github.sha }}
+          ACTOR: ${{ github.actor }}
+        run: |
+          echo "Tag:   $TAG"
+          echo "SHA:   $SHA"
+          echo "Actor: $ACTOR"
+
+      - name: Checkout
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          persist-credentials: false
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@0ebf47130e4866e96fce0953f49152a61190b271 # v6.0.9
+        with:
+          version: 11.8.0
+
+      - name: Setup Node
+        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
+        with:
+          node-version: 24
+          cache: pnpm
+          cache-dependency-path: api/pnpm-lock.yaml
+
+      - name: Install API dependencies
+        run: pnpm install --frozen-lockfile
+        working-directory: api
+
+      - name: Audit production API dependencies
+        run: pnpm audit --prod
+        continue-on-error: true
+        working-directory: api
+
+      - name: Run API tests
+        run: pnpm test -- --coverage --watchAll=false
+        working-directory: api
+
+      - name: Setup flyctl
+        uses: superfly/flyctl-actions/setup-flyctl@ed8efb33836e8b2096c7fd3ba1c8afe303ebbff1 # 1.6
+
+      - name: Verify Fly.io authentication
+        run: flyctl auth whoami
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+
+      - name: Deploy to Fly.io
+        run: flyctl deploy --remote-only --app cosmicledger-api
+        working-directory: api
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+
+      - name: Smoke test API
+        run: |
+          for i in 1 2 3 4 5 6; do
+            code="$(curl -sS -o /dev/null -w '%{http_code}' https://api.cosmicledger.io || true)"
+            if [ "$code" = "200" ] || [ "$code" = "404" ]; then
+              exit 0
+            fi
+            sleep 10
+          done
+          echo "api.cosmicledger.io returned HTTP $code"
+          exit 1
+
+      - name: Notify deployment success
+        if: success()
+        run: |
+          echo "✅ API deployment successful!"
+          echo "URL: https://api.cosmicledger.io"
